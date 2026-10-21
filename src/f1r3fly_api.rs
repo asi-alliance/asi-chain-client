@@ -1,4 +1,6 @@
 use blake2::{Blake2b, Digest};
+use f1r3fly_casper::rust::util::rholang::costacc::owner_offer::owner_direct_offer;
+use f1r3fly_crypto::rust::private_key::PrivateKey;
 use f1r3fly_models::casper::v1::deploy_response::Message as DeployResponseMessage;
 use f1r3fly_models::casper::v1::deploy_service_client::DeployServiceClient;
 use f1r3fly_models::casper::v1::exploratory_deploy_response::Message as ExploratoryDeployResponseMessage;
@@ -10,6 +12,8 @@ use f1r3fly_models::casper::{
     LightBlockInfo, ProposeQuery,
 };
 use f1r3fly_models::rhoapi::Par;
+use f1r3fly_models::rust::cost_deploy_data::DeployData;
+use f1r3fly_models::rust::phlo_schedule::PhloGenesisPolicy;
 use f1r3fly_models::ByteString;
 use prost::Message;
 use secp256k1::{Message as Secp256k1Message, Secp256k1, SecretKey};
@@ -27,6 +31,29 @@ const TIP_SAMPLE_ATTEMPTS: usize = 2;
 const TIP_SAMPLE_TIMEOUT_SECS: u64 = 2;
 const TIP_SAMPLE_DELAY_MS: u64 = 50;
 const TIP_FLOOR_UNSET: i64 = -1;
+
+/// The ASI genesis resource policy (`resource-policy`, hexadecimal). Every
+/// deploy signs its schedule, so it must equal the policy of the shard.
+const ASI_RESOURCE_POLICY: &str = "0000000000000023663172336e6f64653a67656e657369732d7265736f757263652d706f6c6963793a763200000000000002db0000000000000019663172336e6f64653a70686c6f2d7363686564756c653a7631000000000000000800000000000000060000000000000004746573740000000000000004726f6f740000000000000003415349000000000000000a61746f6d69632d415349000000000000000108000000000000021c000000000000000400000004000000000000007b0000000000000007636f6d707574650000000000000004434f4d4d00000000000000204fe858a6554cf65acca907e41bbce0c6c1560ab65b78e1e52646a57d926fb3830000000000000020352ed97b8fa1be92c134dbcbeb944bd03b57c5fe5b7eba3aae55941507182e94000000000000000800000000000000010000000000000080000000000000000c696e74726f64756374696f6e0000000000000004627974650000000000000020bf524c59897ab7aa869ccf79c8a6f990959156084239619aa370d184e47e4a2f0000000000000020352ed97b8fa1be92c134dbcbeb944bd03b57c5fe5b7eba3aae55941507182e9400000000000000080000000000000001000000000000007c00000000000000087472616e736665720000000000000004627974650000000000000020c8384c199e6cde2c0cac6afa3f1a9bf8be50820bcb84686f107201c4cab60cd80000000000000020352ed97b8fa1be92c134dbcbeb944bd03b57c5fe5b7eba3aae55941507182e94000000000000000800000000000000010000000000000079000000000000000574726163650000000000000004627974650000000000000020908704256016b2861488c10ebb616755898ae031ac1ba4dad81ec91fd05d355d0000000000000020352ed97b8fa1be92c134dbcbeb944bd03b57c5fe5b7eba3aae55941507182e9400000000000000080000000000000001000000000000000800000000000000000000000000000008000000000000000100000000000000202595df679351956d36278953647cb3c4364ea869ae33975df380722339402d88000000000000000101";
+
+/// The owner-direct offer of `body`, signed by `signing_key`: the signer's own
+/// vault funds it under the schedule of the ASI policy at phlo price 1.
+pub(crate) fn asi_owner_direct_offer(
+    signing_key: &SecretKey,
+    body: DeployData,
+    phlo_limit: i64,
+) -> Result<DeployDataProto, Box<dyn std::error::Error>> {
+    let owner = PrivateKey::from_bytes(&signing_key.secret_bytes());
+    let policy = PhloGenesisPolicy::decode(&hex::decode(ASI_RESOURCE_POLICY)?)?;
+    let schedule = policy.schedule()?;
+    Ok(owner_direct_offer(
+        &owner,
+        body,
+        u64::try_from(phlo_limit)?,
+        1,
+        &schedule,
+    )?)
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeployInfo {
@@ -165,7 +192,7 @@ impl<'a> F1r3flyApi<'a> {
             current_block,
             expiration_timestamp,
             None,
-        );
+        )?;
 
         // Connect to the F1r3fly node
         let connect_start = Instant::now();
@@ -945,7 +972,7 @@ impl<'a> F1r3flyApi<'a> {
             current_block,
             expiration_timestamp,
             timestamp_override,
-        );
+        )?;
 
         let mut deploy_service_client =
             DeployServiceClient::connect(format!("http://{}:{}/", self.node_host, self.grpc_port))
@@ -1006,7 +1033,7 @@ impl<'a> F1r3flyApi<'a> {
         valid_after_block_number: i64,
         expiration_timestamp: i64,
         timestamp_override: Option<i64>,
-    ) -> DeployDataProto {
+    ) -> Result<DeployDataProto, Box<dyn std::error::Error>> {
         let timestamp = timestamp_override.unwrap_or_else(|| {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -1014,56 +1041,77 @@ impl<'a> F1r3flyApi<'a> {
                 .as_millis() as i64
         });
 
-        // Create a projection with only the fields used for signature calculation
-        // IMPORTANT: The language field is deliberately excluded from signature calculation.
-        // expiration_timestamp IS included when set (non-zero).
-        // Proto3 will not serialize 0 values, so 0 = "not set" = backward compatible.
-        let projection = DeployDataProto {
-            term: code.clone(),
-            timestamp,
-            phlo_price: 1,
+        // Commented out for the cost-accounted F1r3node: the node refuses this
+        // body-only deploy, and it does not build against the node protos. The
+        // deploy is an owner-direct offer under the ASI policy at phlo price 1.
+        //
+        // // Create a projection with only the fields used for signature calculation
+        // // IMPORTANT: The language field is deliberately excluded from signature calculation.
+        // // expiration_timestamp IS included when set (non-zero).
+        // // Proto3 will not serialize 0 values, so 0 = "not set" = backward compatible.
+        // let projection = DeployDataProto {
+        //     term: code.clone(),
+        //     timestamp,
+        //     phlo_price: 1,
+        //     phlo_limit,
+        //     valid_after_block_number,
+        //     shard_id: "root".into(),
+        //     language: String::new(), // Excluded from signature calculation
+        //     sig: ByteString::new(),
+        //     deployer: ByteString::new(),
+        //     sig_algorithm: String::new(),
+        //     expiration_timestamp, // Included when non-zero (proto3 omits 0 values)
+        // };
+        //
+        // // Serialize the projection for hashing
+        // let serialized = projection.encode_to_vec();
+        //
+        // // Hash with Blake2b256
+        // let digest = blake2b_256_hash(&serialized);
+        //
+        // // Sign the digest with secp256k1
+        // let secp = Secp256k1::new();
+        // let message = Secp256k1Message::from_digest(digest.into());
+        // let signature = secp.sign_ecdsa(&message, self.signing_key.as_ref().unwrap());
+        //
+        // // Get signature in DER format
+        // let sig_bytes = signature.serialize_der().to_vec();
+        //
+        // // Get the public key in uncompressed format
+        // let public_key = self.signing_key.unwrap().public_key(&secp);
+        // let pub_key_bytes = public_key.serialize_uncompressed().to_vec();
+        //
+        // // Return the complete deploy message
+        // DeployDataProto {
+        //     term: code,
+        //     timestamp,
+        //     phlo_price: 1,
+        //     phlo_limit,
+        //     valid_after_block_number,
+        //     shard_id: "root".into(),
+        //     language,
+        //     sig: ByteString::from(sig_bytes),
+        //     sig_algorithm: "secp256k1".into(),
+        //     deployer: ByteString::from(pub_key_bytes),
+        //     expiration_timestamp,
+        // }
+        let signing_key = self
+            .signing_key
+            .as_ref()
+            .ok_or("A deploy needs a signing key")?;
+        asi_owner_direct_offer(
+            signing_key,
+            DeployData {
+                term: code,
+                language,
+                time_stamp: timestamp,
+                valid_after_block_number,
+                shard_id: "root".into(),
+                expiration_timestamp: (expiration_timestamp != 0).then_some(expiration_timestamp),
+                authority_presentations: Vec::new(),
+            },
             phlo_limit,
-            valid_after_block_number,
-            shard_id: "root".into(),
-            language: String::new(), // Excluded from signature calculation
-            sig: ByteString::new(),
-            deployer: ByteString::new(),
-            sig_algorithm: String::new(),
-            expiration_timestamp, // Included when non-zero (proto3 omits 0 values)
-        };
-
-        // Serialize the projection for hashing
-        let serialized = projection.encode_to_vec();
-
-        // Hash with Blake2b256
-        let digest = blake2b_256_hash(&serialized);
-
-        // Sign the digest with secp256k1
-        let secp = Secp256k1::new();
-        let message = Secp256k1Message::from_digest(digest.into());
-        let signature = secp.sign_ecdsa(&message, self.signing_key.as_ref().unwrap());
-
-        // Get signature in DER format
-        let sig_bytes = signature.serialize_der().to_vec();
-
-        // Get the public key in uncompressed format
-        let public_key = self.signing_key.unwrap().public_key(&secp);
-        let pub_key_bytes = public_key.serialize_uncompressed().to_vec();
-
-        // Return the complete deploy message
-        DeployDataProto {
-            term: code,
-            timestamp,
-            phlo_price: 1,
-            phlo_limit,
-            valid_after_block_number,
-            shard_id: "root".into(),
-            language,
-            sig: ByteString::from(sig_bytes),
-            sig_algorithm: "secp256k1".into(),
-            deployer: ByteString::from(pub_key_bytes),
-            expiration_timestamp,
-        }
+        )
     }
 }
 

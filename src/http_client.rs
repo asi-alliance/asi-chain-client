@@ -3,12 +3,16 @@
 // Provides an HTTP-based client for interacting with F1r3node,
 // using the node's HTTP API endpoints instead of gRPC.
 
+use base64::{engine::general_purpose::STANDARD, Engine};
+use f1r3fly_models::rust::cost_deploy_data::DeployData;
+use prost::Message;
 use reqwest;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::connection_manager::ConnectionConfig;
+use crate::f1r3fly_api::asi_owner_direct_offer;
 use crate::signing::sign_deploy_data;
 
 /// Default HTTP request timeout in seconds
@@ -151,8 +155,21 @@ impl F1r3nodeHttpClient {
     /// Uses `last_finalized_block()` to determine the current chain height.
     /// This is used to set `valid_after_block_number` for deploys.
     pub async fn get_current_block_number(&self) -> Result<i64, HttpError> {
-        let block = self.last_finalized_block().await?;
-        Ok(block.block_number)
+        // Changed for the cost-accounted F1r3node: the node nests the block
+        // fields under `blockInfo`, so the flat parse of `last_finalized_block()`
+        // fails, and deploys sign valid-after block 0. This reads the same route.
+        // let block = self.last_finalized_block().await?;
+        // Ok(block.block_number)
+        let block: serde_json::Value = self
+            .client
+            .get(&format!("{}/api/last-finalized-block", self.base_url))
+            .send()
+            .await?
+            .json()
+            .await?;
+        block["blockInfo"]["blockNumber"].as_i64().ok_or_else(|| {
+            HttpError::InvalidResponse(format!("No blockInfo.blockNumber in: {}", block))
+        })
     }
 
     /// Deploy Rholang code to F1r3node with default phlo limit
@@ -167,12 +184,42 @@ impl F1r3nodeHttpClient {
         phlo_limit: i64,
     ) -> Result<String, HttpError> {
         let valid_after = self.get_current_block_number().await.unwrap_or(0);
-        let request = self.create_deploy_request(term, phlo_limit, valid_after)?;
+        // Commented out for the cost-accounted F1r3node: the node refuses this
+        // body-only deploy. The deploy is an owner-direct offer, posted to
+        // /api/deploy/offered, which answers with the deploy ID text.
+        // let request = self.create_deploy_request(term, phlo_limit, valid_after)?;
+        //
+        // let response = self
+        //     .client
+        //     .post(&format!("{}/api/deploy", self.base_url))
+        //     .json(&request)
+        //     .send()
+        //     .await?;
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| HttpError::Config(format!("System time error: {}", e)))?
+            .as_millis() as i64;
+        let offer = asi_owner_direct_offer(
+            &self.private_key,
+            DeployData {
+                term: term.to_string(),
+                language: "rholang".to_string(),
+                time_stamp: timestamp,
+                valid_after_block_number: valid_after,
+                shard_id: "root".to_string(),
+                expiration_timestamp: None,
+                authority_presentations: Vec::new(),
+            },
+            phlo_limit,
+        )
+        .map_err(|e| HttpError::Signing(e.to_string()))?;
 
         let response = self
             .client
-            .post(&format!("{}/api/deploy", self.base_url))
-            .json(&request)
+            .post(&format!("{}/api/deploy/offered", self.base_url))
+            .json(&serde_json::json!({
+                "deployDataProtoBase64": STANDARD.encode(offer.encode_to_vec()),
+            }))
             .send()
             .await?;
 
@@ -185,8 +232,13 @@ impl F1r3nodeHttpClient {
             )));
         }
 
-        let deploy_response: DeployResponse = response.json().await?;
-        Ok(deploy_response.deploy_id)
+        // let deploy_response: DeployResponse = response.json().await?;
+        // Ok(deploy_response.deploy_id)
+        let result: String = response.json().await?;
+        result
+            .rsplit_once("DeployId is: ")
+            .map(|(_, deploy_id)| deploy_id.trim().to_string())
+            .ok_or_else(|| HttpError::InvalidResponse(format!("No deploy ID in the response: {}", result)))
     }
 
     /// Find deployment information by deploy ID
