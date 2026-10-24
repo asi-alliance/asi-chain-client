@@ -1128,6 +1128,9 @@ fn extract_par_data(par: &Par) -> Option<String> {
                     Some(format!("\"{}\"", s))
                 }
                 f1r3fly_models::rhoapi::expr::ExprInstance::GInt(i) => Some(i.to_string()),
+                f1r3fly_models::rhoapi::expr::ExprInstance::GBigInt(bytes) => {
+                    Some(num_bigint::BigInt::from_signed_bytes_be(bytes).to_string())
+                }
                 f1r3fly_models::rhoapi::expr::ExprInstance::GBool(b) => Some(b.to_string()),
                 // Add other types as needed
                 _ => Some("Complex expression".to_string()),

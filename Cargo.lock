@@ -2535,6 +2535,7 @@ dependencies = [
  "hex",
  "log",
  "models",
+ "num-bigint",
  "prost",
  "rand 0.8.5",
  "ratatui",
