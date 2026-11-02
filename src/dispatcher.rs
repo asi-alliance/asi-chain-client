@@ -18,9 +18,10 @@ impl Dispatcher {
             Commands::DeployAndWait(args) => deploy_and_wait_command(args)
                 .await
                 .map_err(NodeCliError::from),
-            Commands::IsFinalized(args) => {
-                is_finalized_command(args).await.map_err(NodeCliError::from)
-            }
+            Commands::IsFinalized(args) => is_finalized_command(args)
+                .await
+                .map(|_| ())
+                .map_err(NodeCliError::from),
             Commands::ExploratoryDeploy(args) => exploratory_deploy_command(args)
                 .await
                 .map_err(NodeCliError::from),
@@ -41,6 +42,7 @@ impl Dispatcher {
                 .map_err(NodeCliError::from),
             Commands::WalletBalance(args) => wallet_balance_command(args)
                 .await
+                .map(|_| ())
                 .map_err(NodeCliError::from),
             Commands::BondStatus(args) => {
                 bond_status_command(args).await.map_err(NodeCliError::from)
@@ -58,9 +60,19 @@ impl Dispatcher {
             Commands::ShowMainChain(args) => show_main_chain_command(args)
                 .await
                 .map_err(NodeCliError::from),
-            Commands::Transfer(args) => transfer_command(args).await.map_err(NodeCliError::from),
+            Commands::TransferDeploy(args) => transfer_deploy(args)
+                .await
+                .map(|_| ())
+                .map_err(NodeCliError::from),
+            Commands::Transfer(args) => transfer_command(args)
+                .await
+                .map(|_| ())
+                .map_err(NodeCliError::from),
             Commands::LoadTest(args) => load_test_command(args).await.map_err(NodeCliError::from),
-            Commands::GetDeploy(args) => get_deploy_command(args).await.map_err(NodeCliError::from),
+            Commands::GetDeploy(args) => get_deploy_command(args)
+                .await
+                .map(|_| ())
+                .map_err(NodeCliError::from),
             Commands::EpochInfo(args) => epoch_info_command(args).await.map_err(NodeCliError::from),
             Commands::ValidatorStatus(args) => validator_status_command(args)
                 .await
@@ -147,6 +159,7 @@ impl Dispatcher {
             Commands::NetworkHealth(_) => "network-health",
             Commands::LastFinalizedBlock(_) => "last-finalized-block",
             Commands::ShowMainChain(_) => "show-main-chain",
+            Commands::TransferDeploy(_) => "transfer-deploy",
             Commands::Transfer(_) => "transfer",
             Commands::LoadTest(_) => "load-test",
             Commands::GetDeploy(_) => "get-deploy",
