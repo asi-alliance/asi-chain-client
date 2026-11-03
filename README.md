@@ -8,13 +8,39 @@ behavior using the current system-vault ABI. Read the [ASI migration guide](docs
 before upgrading from 0.1.1: the library API and endpoint flags have changed.
 Consumer gitlinks must be updated separately after adapting their callers.
 
+## Branches and testnet builds
+
+Branch roles verified on 2026-11-03:
+
+| Branch | Role |
+|---|---|
+| `dev` | Active ASI integration and development base. [PR #3](https://github.com/asi-alliance/asi-chain-client/pull/3) merged here as `40f2a9408040252dd23761cd06adb9f1407ef228`, preserving the reviewed ASI runtime integration `77cbdc8`. |
+| `main` | Release line, currently upstream v0.2.9. Promotion of the ASI integration from dev is a separate maintainer decision; the Release workflow runs on main. |
+| `asi-main` | Historical ASI 0.1.1 line; still the GitHub default during the transition. Select dev explicitly for current development. |
+| `asi-dev` | Older separate ASI line with unique OpenSSL/target configuration; preserve it for review, but do not use it as the current integration baseline. |
+
+Clone the active integration explicitly:
+
+```bash
+git clone --branch dev https://github.com/asi-alliance/asi-chain-client.git
+cd asi-chain-client
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development and release promotion.
+Testnet ECR builds default to remote dev unless an explicit owner instruction
+selects another revision; resolve its full SHA before building. The
+[image inventory](https://github.com/asi-alliance/asi-chain-testnet-infra/blob/main/docs/releases/image-inventory-20261103.md#published-image-sources)
+records exact source commits, tags and digests. The published standalone client
+was rebuilt from dev `40f2a9408040`; it does not update the Rust library embedded
+in wallet CLI or faucet images. Consumer gitlinks require their own review.
+
 ## Quick Start
 
 Node endpoints are URLs: `http://` is plaintext, `https://` is TLS (add `--ca-cert <PEM>` to trust a private CA; it is refused if any endpoint of the command is `http://`). An HTTP endpoint may carry a base path, such as `https://proxy.example/node1`; a gRPC endpoint may not. `--connect-timeout` (default 10) and `--timeout` (default 30) bound, in seconds, connecting and each request. Commands default to a node's own ports, gRPC `http://localhost:40401` and HTTP `http://localhost:40403`, except `propose` (internal gRPC, `http://localhost:40402`) and commands that need a read-only node, which require the endpoint flag. Every setting can also come from an environment variable or a named profile in a config file; see [Configuration](docs/configuration.md). The examples below target the system-integration single-host Docker shard.
 
 ```bash
 # Build
-cargo build --release
+cargo build --release --locked
 
 # Check node status and native token info
 cargo run --release -- status --http http://localhost:40413
