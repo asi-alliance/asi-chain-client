@@ -6,6 +6,7 @@
 //! Without the feature the target does not build, so a missing shard can never
 //! read as a pass. `FIREFLY_KEEP_SHARD=1` leaves the shard up for debugging.
 
+mod asi;
 mod common;
 mod deploys;
 mod pos;
@@ -25,6 +26,7 @@ fn main() -> ExitCode {
 
     let parallel: Vec<Trial> = routing::trials()
         .into_iter()
+        .chain(asi::trials())
         .chain(deploys::trials())
         .chain(transfers::trials())
         .chain(surface::trials())

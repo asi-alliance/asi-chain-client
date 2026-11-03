@@ -6,22 +6,24 @@ on:
     branches:
       - main
       - dev
+      - asi-main
+      - asi-dev
     tags: "v**"
   pull_request:
     branches:
       - main
       - dev
+      - asi-main
+      - asi-dev
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  # The node the client is developed against. A red run here is re-run against
-  # the previous immutable dev-v...-g<sha> tag: green there means the node
-  # changed, not the client. The job records the digest it pulled, because the
-  # node's own /api/status cannot identify its build (f1r3node-rust#428).
-  FIREFLY_NODE_IMAGE: f1r3flyindustries/f1r3fly-rust:dev
+  # ASI acceptance target: source 5dafbc37, already published, linux/amd64.
+  # Keep it aligned with Cargo.toml and the integration harness default.
+  FIREFLY_NODE_IMAGE: public.ecr.aws/l2u2v4a8/asi-chain/node-rust@sha256:e6e82cdc5c9bc794367e15314d9c22256a8ebc0b2457d9492d633b2453c4c1df
 
 jobs:
   # Format and lint checks: fast, runs in parallel with build_base.
@@ -300,8 +302,9 @@ jobs:
       fail-fast: false
       matrix:
         arch:
+          # This immutable node artifact is amd64; client builds and unit
+          # tests above still cover both architectures.
           - { runner: ubuntu-latest, name: amd64, rustflags: "-C target-feature=+aes,+sse2" }
-          - { runner: ubuntu-24.04-arm, name: arm64, rustflags: "-C target-feature=+aes,+neon" }
     env:
       RUSTFLAGS: ${{ matrix.arch.rustflags }}
     steps:

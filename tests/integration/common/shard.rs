@@ -300,7 +300,7 @@ impl Drop for Shard {
 
 pub fn image() -> String {
     std::env::var("FIREFLY_NODE_IMAGE")
-        .unwrap_or_else(|_| "f1r3flyindustries/f1r3fly-rust:dev".to_string())
+        .unwrap_or_else(|_| "public.ecr.aws/l2u2v4a8/asi-chain/node-rust@sha256:e6e82cdc5c9bc794367e15314d9c22256a8ebc0b2457d9492d633b2453c4c1df".to_string())
 }
 
 fn topology_dir() -> PathBuf {
