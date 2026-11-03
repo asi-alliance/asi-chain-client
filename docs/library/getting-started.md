@@ -4,8 +4,12 @@ Add as a dependency with `default-features = false` to exclude CLI dependencies:
 
 ```toml
 [dependencies]
-node_cli = { git = "https://github.com/F1R3FLY-io/rust-client.git", default-features = false }
+node_cli = { git = "https://github.com/asi-alliance/asi-chain-client.git", rev = "<accepted-client-commit>", default-features = false }
 ```
+
+Replace the placeholder with the reviewed ASI commit. Do not point a consumer at
+a moving synchronization branch. Existing 0.1.1 callers need the changes in
+[ASI migration](../asi-migration.md).
 
 ## ConnectionManager
 

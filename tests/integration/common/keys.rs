@@ -39,6 +39,8 @@ pub static DEPLOY_C: Role = Role::new(Key::generate);
 pub static REPORT_SENDER: Role = Role::new(Key::generate);
 pub static TRANSFER_SENDER: Role = Role::new(Key::generate);
 pub static TRANSFER_RECIPIENT: Role = Role::new(Key::generate);
+pub static ASI_TRANSFER_SENDER: Role = Role::new(Key::generate);
+pub static ASI_TRANSFER_RECIPIENT: Role = Role::new(Key::generate);
 /// Funded with far less than the others, so a transfer of an ordinary amount
 /// overdraws the vault. Two of them: the tests that overdraw run in the
 /// parallel group, and concurrent deploys from one deployer collide.
@@ -77,7 +79,7 @@ pub const FUNDED: &str = "50000000000000000";
 const SCARCELY_FUNDED: &str = "1000000";
 
 /// Each vault funded at genesis: its role's name, key and balance.
-pub fn genesis_wallets() -> [(&'static str, &'static Key, &'static str); 17] {
+pub fn genesis_wallets() -> [(&'static str, &'static Key, &'static str); 19] {
     [
         ("profile-deploy", &PROFILE_DEPLOY, FUNDED),
         ("deploy-a", &DEPLOY_A, FUNDED),
@@ -86,6 +88,8 @@ pub fn genesis_wallets() -> [(&'static str, &'static Key, &'static str); 17] {
         ("report-sender", &REPORT_SENDER, FUNDED),
         ("transfer-sender", &TRANSFER_SENDER, FUNDED),
         ("transfer-recipient", &TRANSFER_RECIPIENT, FUNDED),
+        ("asi-transfer-sender", &ASI_TRANSFER_SENDER, FUNDED),
+        ("asi-transfer-recipient", &ASI_TRANSFER_RECIPIENT, FUNDED),
         ("resubmit", &RESUBMIT, FUNDED),
         ("resend-expired", &RESEND_EXPIRED, FUNDED),
         ("tls-deploy", &TLS_DEPLOY, FUNDED),

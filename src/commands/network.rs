@@ -332,7 +332,7 @@ pub async fn transfer_command(args: &TransferArgs) -> CliResult {
 
     let amount_dust = if args.whole_tokens {
         // Whole-token mode: ask the node how many decimals the native token has.
-        let status_json = manager.http().get_json("/status").await?;
+        let status_json = manager.http().get_json("/api/status").await?;
         let decimals = status_json
             .get("nativeTokenDecimals")
             .and_then(|v| v.as_u64())
@@ -523,16 +523,9 @@ pub async fn get_deploy_command(args: &GetDeployArgs) -> CliResult {
     Ok(())
 }
 
-fn validate_vault_address(address: &str) -> CliResult {
-    if !address.starts_with("1111") {
-        return Err("Invalid vault address format: must start with '1111'".into());
-    }
-
-    if address.len() < 40 {
-        return Err("Invalid vault address format: too short".into());
-    }
-
-    Ok(())
+/// Validate a vault address before submitting a transfer. Kept public for ASI consumers.
+pub fn validate_vault_address(address: &str) -> CliResult {
+    Ok(crate::vault::validate_address(address)?)
 }
 
 /// Read data at a deploy ID from a specific block

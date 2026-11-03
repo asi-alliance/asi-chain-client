@@ -1,6 +1,12 @@
-# F1r3fly Node CLI
+# ASI Chain Node CLI
 
-Rust crate for interacting with F1r3fly blockchain nodes. Usable as a **library** or **CLI tool**.
+Rust library and CLI for ASI Chain's Rust nodes, maintained as a fork of
+[F1R3FLY-io/rust-client](https://github.com/F1R3FLY-io/rust-client).
+
+This synchronization starts from upstream v0.2.9 and preserves ASI native-token
+behavior using the current system-vault ABI. Read the [ASI migration guide](docs/asi-migration.md)
+before upgrading from 0.1.1: the library API and endpoint flags have changed.
+Consumer gitlinks must be updated separately after adapting their callers.
 
 ## Quick Start
 

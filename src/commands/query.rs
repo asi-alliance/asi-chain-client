@@ -259,15 +259,15 @@ impl DiscoveredPeer {
     }
 }
 
-/// A node's `/status`, with the request and answer printed when `debug` is set.
+/// A node's `/api/status`, with the request and answer printed when `debug` is set.
 pub(crate) async fn query_node_status(
     node: &NodeHttp,
     debug: bool,
 ) -> crate::Result<serde_json::Value> {
     if debug {
-        println!("\n [DEBUG] GET {}/status", node.endpoint());
+        println!("\n [DEBUG] GET {}/api/status", node.endpoint());
     }
-    let status = node.get_json("/status").await;
+    let status = node.get_json("/api/status").await;
     if debug {
         match &status {
             Ok(json) => {
