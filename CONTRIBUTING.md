@@ -2,6 +2,17 @@
 
 Thanks for contributing! This repo follows a `dev → main` flow.
 
+## ASI fork
+
+This is `asi-alliance/asi-chain-client`. The owner-selected synchronization PR
+targets `asi-main`; `asi-dev` is a separate ASI line. The inherited branches
+named `dev` and `main` are not the ASI release baseline. Do not automatically
+publish a release or update consumer gitlinks during synchronization.
+
+The branching and release policy below describes the F1R3FLY upstream. Send
+generic upstream fixes to its `dev` branch. See [ASI migration](docs/asi-migration.md)
+for the required ASI behavior and selected node image.
+
 ## Branching policy
 
 ```

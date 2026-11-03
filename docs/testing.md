@@ -32,7 +32,7 @@ returned early and 28 of them "passed" in 0.63 seconds without a node.
 
 | Variable | Effect |
 |---|---|
-| `FIREFLY_NODE_IMAGE` | Node image to run. Default `f1r3flyindustries/f1r3fly-rust:dev` |
+| `FIREFLY_NODE_IMAGE` | Node image to run. Default: the immutable ASI acceptance image in [ASI migration](asi-migration.md) |
 | `FIREFLY_KEEP_SHARD` | Leave the shard up after the run, for debugging |
 | `RUST_LOG` | Passed to every node; the topology's own filter applies otherwise |
 
@@ -42,7 +42,7 @@ Run one test by name:
 cargo test --release --features integration --test integration -- pos::
 ```
 
-Host ports 40400-40462 must be free, so a shard from another project on 404xx
+Host loopback ports 40400-40462 must be free, so a shard from another project on 404xx
 has to be down first.
 
 ### The shard

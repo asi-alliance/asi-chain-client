@@ -4,8 +4,9 @@
 // Usage:
 //   node_cli exploratory-deploy --grpc http://localhost:40452 -f rho_examples/query_token_metadata.rho
 //
-// Expected output on a default F1R3FLY chain:
-//   ("F1R3CAP", "F1R3", 8)
+// Expected output on the ASI integration fixture:
+//   ("ASI", "ASI", 8)
+// Other networks report their own configured metadata.
 
 new ret, rl(`rho:registry:lookup`), tmCh in {
   rl!(`rho:system:tokenMetadata`, *tmCh) |
