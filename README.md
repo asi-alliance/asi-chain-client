@@ -27,12 +27,6 @@ cd asi-chain-client
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development and release promotion.
-Testnet ECR builds default to remote dev unless an explicit owner instruction
-selects another revision; resolve its full SHA before building. The
-[image inventory](https://github.com/asi-alliance/asi-chain-testnet-infra/blob/main/docs/releases/image-inventory-20261103.md#published-image-sources)
-records exact source commits, tags and digests. The published standalone client
-was rebuilt from dev `40f2a9408040`; it does not update the Rust library embedded
-in wallet CLI or faucet images. Consumer gitlinks require their own review.
 
 ## Quick Start
 
